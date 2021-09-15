@@ -50,6 +50,7 @@ if ( ! class_exists( 'WP_Import_Content' ) ) {
 
         public function setting_page_html() { ?>
             <div class="wrap">
+
                 <h1>Import content</h1>
                 <table class="form-table">
                     <tbody>
@@ -78,9 +79,12 @@ if ( ! class_exists( 'WP_Import_Content' ) ) {
                                         'public'  => true,
                                         'show_ui' => true
                                     ] ) as $post_type
-                                ) { ?>
+                                ) {
+                                    if($post_type !== 'attachment') {
+                                    ?>
                                     <option value="<?= $post_type; ?>"><?= $post_type; ?></option>
-                                <?php } ?>
+                                <?php }
+                                }?>
                             </select>
                         </td>
                     </tr>
@@ -133,6 +137,7 @@ if ( ! class_exists( 'WP_Import_Content' ) ) {
                 </table>
                 <button class="button button-primary" data-button-action="start-import">Start import</button>
             </div>
+            <div class="preloader hidden" id="loader"></div>
             <?php
             wp_enqueue_script( Config::SLUG );
             wp_enqueue_style( Config::SLUG );

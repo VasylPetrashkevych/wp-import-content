@@ -3,7 +3,7 @@
 
     function show_loader(status = true) {
         const loader = document.getElementById('loader');
-        loader.style.display = status ? 'block' : 'none'
+        loader.classList.toggle('hidden')
     }
 
     const cache = {
@@ -22,6 +22,7 @@
     {
         document.querySelector('[data-action="load-file"]').addEventListener('click', function (e) {
             e.preventDefault();
+            show_loader();
             const file = wp.media({
                 title: 'Upload file',
                 multiple: false,
@@ -45,12 +46,12 @@
                     fetch(`${route}/read-file/?id=${fileData.id}`)
                         .then(response => response.json())
                         .then(data => {
-                            cache.fields = data;
                             document.querySelector('[data-fields="csv"] .list').innerHTML = data;
                             status.target = true;
                             if (status.source && status.target) {
                                 startMapping();
                             }
+                            show_loader();
                         })
                         .catch(error => {
                             console.log(error);
@@ -68,6 +69,7 @@
         }
 
         document.querySelector('#select_post_type').addEventListener('change', function () {
+            show_loader();
             fetch(`${route}/load-custom-fields/?post_type=${this.value}`)
                 .then(response => response.json())
                 .then(data => {
@@ -78,6 +80,7 @@
                     if (status.source && status.target) {
                         startMapping();
                     }
+                    show_loader();
                 })
                 .catch(error => {
                     console.log(error);
@@ -85,9 +88,11 @@
         });
 
         document.addEventListener('change', function (e) {
+
             const group_field_selector = document.querySelector('#select_post_acf_group');
             const value_of_group_field = document.querySelector('#select_post_acf_group_value')
             if (e.target === document.getElementById('select_post')) {
+                show_loader();
                 fetch(`${route}/load-custom-fields/?post_type=${cache.postType}&post_id=${e.target.value}`)
                     .then(response => response.json())
                     .then(data => {
@@ -99,12 +104,14 @@
                         if (status.source && status.target) {
                             startMapping();
                         }
+                        show_loader();
                     })
                     .catch(error => {
                         console.log(error);
                     })
             }
             if (e.target === group_field_selector) {
+                show_loader();
                 const groupFields = document.querySelectorAll('[data-fields="custom"] .list [data-group]');
                 const groupFieldValue = document.querySelector('#select_post_acf_group');
                 groupFields.forEach(groupField => {
@@ -115,9 +122,9 @@
                     .then(response => response.json())
                     .then(data => {
                         cache.groupValueID = groupFieldValue.value;
-                        console.log(data.fields)
                         document.querySelector('#select_post_acf_group_value_row').style.display = 'table-row'
                         value_of_group_field.innerHTML = data.fields;
+                        show_loader();
                     })
                     .catch(error => {
                         console.log(error);
@@ -125,7 +132,15 @@
             }
 
             if(e.target === value_of_group_field) {
-
+                show_loader();
+                cache.groupValueSlug = value_of_group_field.value;
+                fetch(`${route}/get-field-data/?field_id=${value_of_group_field.value}&group_id=${cache.groupID}&post_id=${cache.postId}`)
+                    .then(response=>response.json())
+                    .then(data => {
+                        document.querySelector('[data-fields="custom"] .list').innerHTML = data.html;
+                        startMapping();
+                        show_loader();
+                    })
             }
         })
     }
@@ -134,11 +149,12 @@
         const button = document.querySelector('[data-button-action="start-import"]');
         button.addEventListener('click', function (e) {
             e.preventDefault();
+            show_loader();
             const result = {
                 type: 'posts',
                 post_type: 'page',
                 mapped: {},
-                file_id: cache.fileID,
+                data: {...cache},
             };
             const groups = document.querySelectorAll('.field_group');
             groups.forEach(group => {
@@ -148,6 +164,7 @@
                     result.mapped[fieldData.associate] = {
                         target: fieldData.field,
                         type: fieldData.type,
+                        targetKey: fieldData.fieldKey,
                     }
                 })
 
@@ -163,7 +180,8 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data)
+                    console.log(data);
+                    show_loader();
                 })
                 .catch(error => {
                     console.log(error);

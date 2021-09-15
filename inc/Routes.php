@@ -37,6 +37,14 @@ class Routes {
                 'callback' => [ $this, 'load_group_fields' ],
             ]
         );
+        register_rest_route(
+            Config::SLUG . '/v1',
+            'get-field-data',
+            [
+                'methods'  => 'GET',
+                'callback' => [ $this, 'get_field_data' ],
+            ]
+        );
 
         register_rest_route(
             Config::SLUG . '/v1',
@@ -98,7 +106,7 @@ class Routes {
             }
             $html .= '</ul><ul class="associate-table target-data">';
             foreach ( acf_get_fields( $group['key'] ) as $field ) {
-                $html .= '<li class="target-data-fields"><div class="target-data-field" data-field="' . $field['name'] . '" data-type="' . $field['type'] . '">Put her field</div></li>';
+                $html .= '<li class="target-data-fields"><div class="target-data-field"  data-field-key="' . $field['key'] . '"data-field="' . $field['name'] . '" data-type="' . $field['type'] . '">Put her field</div></li>';
             }
             $html .= '</ul></div></div>';
         }
@@ -239,7 +247,27 @@ class Routes {
 
     public function start_import( WP_REST_Request $request ) {
         $data      = $request->get_params();
-        $file_data = $this->csv_to_array( get_attached_file( $data['file_id'] ) )['data'];
+        $info = $data['data'];
+        $file_data = $this->csv_to_array( get_attached_file( $info['fileID'] ) )['data'];
+        if ( array_key_exists( 'groupValueSlug', $info ) ) {
+            foreach ( $file_data as $f_data ) {
+                $row = [];
+                foreach ( $f_data as $key => $value ) {
+                    if(array_key_exists($key, $data['mapped'])) {
+                        $m_data = $data['mapped'][ $key ];
+                        if ( $m_data['type'] === 'image' && $value !== '') {
+                            $value = $this->image_upload_from_url( $value );
+                            $value = $value['attachment_id'];
+                        }
+                        $row[$m_data['target'] ] = $value;
+                    }
+                 }
+               add_row( $info['groupValueSlug'], $row, $info['postId'] );
+            }
+
+            return new WP_REST_Response( ['response'=>'success'], '200' );
+        }
+
         if ( $data['type'] === 'posts' ) {
             foreach ( $file_data as $f_data ) {
                 $post_id = wp_insert_post( [
@@ -255,8 +283,9 @@ class Routes {
                     update_field( $m_data['target'], $value, $post_id );
                 }
             }
+
+            return new WP_REST_Response( $file_data, '200' );
         }
-//        return new WP_REST_Response( $file_data, '200' );
     }
 
     public function load_group_fields( WP_REST_Request $request ): WP_REST_Response {
@@ -267,7 +296,36 @@ class Routes {
             $html .= '<option value="' . $field['name'] . '">' . $field['label'] . '</option>';
         }
 
-        return new WP_REST_Response( [ 'fields' => $html ] );
+        return new WP_REST_Response( [ 'fields' => $html, 'test' => $fields ] );
+    }
+
+    public function get_field_data( WP_REST_Request $request ): WP_REST_Response {
+        $params         = $request->get_params();
+        $fields         = acf_get_fields( $params['group_id'] );
+        $selected_field = null;
+        foreach ( $fields as $field ) {
+            if ( $field['name'] === $params['field_id'] ) {
+                $selected_field = $field;
+                break;
+            }
+        }
+        $html = '';
+        if ( array_key_exists( 'sub_fields', $selected_field ) ) {
+            $html = '<div class="field_group" data-group="' . $params['group_id'] . '" style="display: block;"><h5>' . $selected_field['name'] . '</h5><div class="table"><ul>';
+            foreach ( $selected_field['sub_fields'] as $field ) {
+                $html .= '<li>' . $field['label'] . '</li>';
+            }
+            $html .= '</ul><ul class="associate-table target-data">';
+            foreach ( $selected_field['sub_fields'] as $field ) {
+                $html .= '<li class="target-data-fields"><div class="target-data-field" data-field-key="' . $field['key'] . '" data-field="' . $field['name'] . '" data-type="' . $field['type'] . '">Put her field</div></li>';
+            }
+            $html .= '</ul></div></div>';
+        }
+
+        return new WP_REST_Response( [
+            'html' => $html,
+            'test' => array_key_exists( 'sub_fields', $selected_field )
+        ], 200 );
     }
 }
 
