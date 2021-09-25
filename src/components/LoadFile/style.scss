@@ -1,0 +1,9 @@
+.load-file {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  &__name {
+    margin-left: 10px;
+  }
+}
