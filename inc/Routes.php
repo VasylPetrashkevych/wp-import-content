@@ -50,15 +50,6 @@ class Routes {
 
         register_rest_route(
             Config::SLUG . '/v1',
-            'get_field_data',
-            [
-                'methods'  => 'GET',
-                'callback' => [ $this, 'get_field_data' ],
-            ]
-        );
-
-        register_rest_route(
-            Config::SLUG . '/v1',
             'import',
             [
                 'methods'  => 'POST',
@@ -106,11 +97,11 @@ class Routes {
                 'value'    => $group['key'],
                 'label'    => $group['title'],
                 'type'     => $group['type'] ?? explode( '_', $group['key'] )[0],
-                'children' => $this->render_fields_data( acf_get_fields( $group['key'] ) )
+                'children' => $this->render_fields_data( acf_get_fields( $group['key'] ), $group['key'] )
             ];
         }
 
-        return new WP_REST_Response( [ 'posts' => $posts_lists, 'fields' => $fields, ], 201 );
+        return new WP_REST_Response( [ 'posts' => $posts_lists, 'fields' => $fields], 201 );
     }
 
     private function render_fields_data( $fields, $parent_field = null, $group_key = null ): array {
@@ -134,19 +125,13 @@ class Routes {
                 $result[ $key ]['group_key'] = $group_key;
             }
             if ( array_key_exists( 'layouts', $field ) ) {
-                $result[ $key ]['children'] = $this->render_fields_data( $field['layouts'], $field['key'],$this->group_key );
+                $result[ $key ]['children'] = $this->render_fields_data( $field['layouts'], $field['key'], $this->group_key );
             } elseif ( array_key_exists( 'sub_fields', $field ) ) {
-                $result[ $key ]['children'] = $this->render_fields_data( $field['sub_fields'], $field['key'],$this->group_key );
+                $result[ $key ]['children'] = $this->render_fields_data( $field['sub_fields'], $field['key'], $this->group_key );
             }
         }
 
         return $result;
-    }
-
-    public function get_group_fields( WP_REST_Request $request ): WP_REST_Response {
-        $group_key = $request->get_param( 'group_id' );
-
-        return new WP_REST_Response( [ 'fields' => $this->render_fields_data( acf_get_fields( $group_key ) ) ], 201 );
     }
 
     public function read_file( WP_REST_Request $request ): WP_REST_Response {
@@ -283,15 +268,8 @@ class Routes {
 
         return $result;
     }
-    private function get_row_id($key, $postID) {
-     $data = get_field_object('field_611e18cdf8b6d', $postID);
-     var_dump($data);
-     foreach ($data as $fields) {
 
-     }
-     return null;
-    }
-    private function update_single_data( $mapped_fields, $file_data, $postID ) {
+    private function update_data( $mapped_fields, $file_data, $postID, $row_id ) {
         if(gettype($mapped_fields) === 'string') {
             $mapped_fields = json_decode($mapped_fields, true);
         }
@@ -309,11 +287,9 @@ class Routes {
                     $data = [];
                     $has_sub_fields = false;
                     $group_key = null;
-                    $row_id = null;
                     foreach ( $field as $item ) {
                         if(array_key_exists('group_key', $item)) {
                             $group_key = $item['group_key'];
-                            $row_id = $this->get_row_id($group_key, $postID);
                             $has_sub_fields = acf_maybe_get_sub_field([$item['group_key'], $row_id, $key], acf_get_valid_post_id($postID), false);
                         }
                         if ( array_key_exists( $item['value'], $file_d ) ) {
@@ -325,20 +301,37 @@ class Routes {
                         }
                     }
                     if ( $has_sub_fields ) {
-//                        add_sub_row( [$group_key, $row_id, $key], $data, $postID );
+                        add_sub_row( [$group_key, $row_id, $key], $data, $postID );
                     } else {
-//                        add_row( $key, $data, $postID );
+                        add_row( $key, $data, $postID );
                     }
                 }
             }
         }
     }
 
-    public function start_import( WP_REST_Request $request ) {
+    public function start_import( WP_REST_Request $request ): WP_REST_Response {
         $data      = $request->get_params();
         $file_data = $this->csv_to_array( get_attached_file( $data['fileID'] ) )['data'];
         if ( $data['postID'] !== null ) {
-            $this->update_single_data( $data['data'], $file_data, $data['postID'] );
+            $this->update_data( $data['data'], $file_data, $data['postID'], $data['rowID'] );
+        } else {
+            foreach ( $file_data as  $f_data ) {
+                $post_id = wp_insert_post( [
+                    'post_title' => $f_data[$data['postTitleField']],
+                    'post_type'  => $data['postType']
+                ] );
+
+                foreach ( $data['data'] as $key => $_data ) {
+                    foreach ($_data as $field) {
+                        $value = $f_data[ $field['value'] ];
+                        if ( $_data['type'] === 'image' && $value !== '' ) {
+                            $value = $this->image_upload_from_url( $value )['attachment_id'];
+                        }
+                        update_field( $field['key'], $value, $post_id );
+                    }
+                }
+            }
         }
 
         return new WP_REST_Response( [], '200' );
