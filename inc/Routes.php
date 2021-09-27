@@ -60,17 +60,21 @@ class Routes {
 
     public function get_post_types(): WP_REST_Response {
         $response = [];
+        $excluded_post_types = [
+            'attachment',
+            'post'
+        ];
         $posts    = get_post_types( [
             'public'  => true,
             'show_ui' => true
         ] );
         foreach ( $posts as $post ) {
-            if ( $post !== 'attachment' ) {
+            if ( !in_array($post, $excluded_post_types) ) {
                 array_push( $response, $post );
             }
         }
 
-        return new WP_REST_Response( [ 'postTypes' => $response ], 201 );
+        return new WP_REST_Response( [ 'postTypes' => $response, 'pluginUrl' => WIC_URL ], 201 );
     }
 
     public function get_posts( WP_REST_Request $request ): WP_REST_Response {
@@ -107,7 +111,7 @@ class Routes {
     private function render_fields_data( $fields, $parent_field = null, $group_key = null ): array {
         $result = [];
         foreach ( $fields as $field ) {
-            if($field['type'] === 'flexible_content') {
+            if(array_key_exists('type', $field) && $field['type'] === 'flexible_content') {
                 $this->group_key = $field['key'];
             }
 
@@ -292,11 +296,21 @@ class Routes {
                             $group_key = $item['group_key'];
                             $has_sub_fields = acf_maybe_get_sub_field([$item['group_key'], $row_id, $key], acf_get_valid_post_id($postID), false);
                         }
-                        if ( array_key_exists( $item['value'], $file_d ) ) {
+                        if($item['type'] === 'link') {
+                            if(array_key_exists( $item['value']['url'], $file_d ) && array_key_exists( $item['value']['title'], $file_d )) {
+                                $value = [
+                                    'url' => $file_d[ $item['value']['url']] === ''  ? '#' : $file_d[ $item['value']['url']],
+                                    'title' => $file_d[ $item['value']['title'] ],
+                                    'target'=> '',
+                                ];
+                                $data[ $item['key'] ] = $value;
+                            }
+                        } else if ( array_key_exists( $item['value'], $file_d ) ) {
                             $value = $file_d[ $item['value'] ];
                             if($item['type'] === 'image' && $file_d[ $item['value'] ] !== '') {
                                 $value = $this->image_upload_from_url($file_d[ $item['value'] ])['attachment_id'];
                             }
+
                             $data[ $item['key'] ] = $value;
                         }
                     }
@@ -315,23 +329,6 @@ class Routes {
         $file_data = $this->csv_to_array( get_attached_file( $data['fileID'] ) )['data'];
         if ( $data['postID'] !== null ) {
             $this->update_data( $data['data'], $file_data, $data['postID'], $data['rowID'] );
-        } else {
-            foreach ( $file_data as  $f_data ) {
-                $post_id = wp_insert_post( [
-                    'post_title' => $f_data[$data['postTitleField']],
-                    'post_type'  => $data['postType']
-                ] );
-
-                foreach ( $data['data'] as $key => $_data ) {
-                    foreach ($_data as $field) {
-                        $value = $f_data[ $field['value'] ];
-                        if ( $_data['type'] === 'image' && $value !== '' ) {
-                            $value = $this->image_upload_from_url( $value )['attachment_id'];
-                        }
-                        update_field( $field['key'], $value, $post_id );
-                    }
-                }
-            }
         }
 
         return new WP_REST_Response( [], '200' );

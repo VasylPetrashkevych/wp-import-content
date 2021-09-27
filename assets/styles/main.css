@@ -26309,4 +26309,12 @@ div.ant-typography-edit-content.ant-typography-rtl {
 .hidden_col {
   display: none; }
 
+.link-col {
+  display: flex;
+  flex-direction: column; }
+  .link-col__row-title {
+    margin-bottom: 5px; }
+  .link-col__row + .link-col__row {
+    margin-top: 15px; }
+
 /*# sourceMappingURL=main.css.map*/

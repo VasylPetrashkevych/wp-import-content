@@ -31,7 +31,24 @@ const Mapping = (data) => {
             }
         );
     }
+    let linkData = {
+        url: '',
+        title: '',
+        target: '',
+    }
 
+    const setLink = (value, row)=> {
+        linkData[row.link] = value !== 'not selected' ? value : '';
+        if(linkData.url !== '' && linkData.title !== '') {
+            const dataFields = {...data.mappedFields};
+            let key = row.parent_key === undefined ? 'no_parent' : row.parent_key;
+            if (dataFields[key] === undefined) {
+                dataFields[key] = [];
+            }
+            dataFields[key].push({key: row['field-key'], value: linkData, type: row.type, group_key: row['group_key']});
+            data.updateMapping(dataFields);
+        }
+    }
     return <div className="mapping">
         {
             data.length !== 0 ? <Table
@@ -52,6 +69,43 @@ const Mapping = (data) => {
                                 if (data.dataFromFile.length === 0) {
                                     return <Tag color="orange">Select a file</Tag>;
                                 }
+                                if(record.field_type === 'link' ) {
+                                    return (
+                                        <div className="link-col">
+                                            <div className="link-col__row">
+                                                <div className="link-col__row-title">Url</div>
+                                                    <div className="link-col__row-field">
+                                                        <Select style={{width: 180}} onChange={setLink} defaultValue="default">
+                                                        <Option value="default">not selected</Option>
+                                                        {data.dataFromFile.map(field => <Option field-key={record.key}
+                                                                                                parent_key={record.parent_field}
+                                                                                                type={record.field_type}
+                                                                                                key={field}
+                                                                                                link="url"
+                                                                                                group_key={record.group_key}
+                                                                                                value={field}>{field}</Option>)}
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <div className="link-col__row">
+                                                <div className="link-col__row-title">Title</div>
+                                                <div className="link-col__row-field">
+                                                    <Select style={{width: 180}} onChange={setLink} defaultValue="default">
+                                                        <Option value="default">not selected</Option>
+                                                        {data.dataFromFile.map(field => <Option field-key={record.key}
+                                                                                                parent_key={record.parent_field}
+                                                                                                type={record.field_type}
+                                                                                                key={field}
+                                                                                                link="title"
+                                                                                                group_key={record.group_key}
+                                                                                                value={field}>{field}</Option>)}
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
                                 return (
                                     <Select style={{width: 180}} onChange={setMapping} defaultValue="default">
                                         <Option value="default">not selected</Option>

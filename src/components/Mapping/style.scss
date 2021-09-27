@@ -5,3 +5,15 @@
 .hidden_col {
   display: none;
 }
+.link-col {
+  display: flex;
+  flex-direction: column;
+  &__row {
+    &-title {
+      margin-bottom: 5px;
+    }
+    & + .link-col__row {
+      margin-top: 15px;
+    }
+  }
+}
