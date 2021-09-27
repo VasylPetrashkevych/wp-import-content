@@ -95,6 +95,7 @@ const App = (data) => {
                         fileID: data.fileData.id,
                         rowID,
                         postType: data.postType,
+                        path: pathToField,
                     }
                 )
             }
@@ -117,6 +118,7 @@ const App = (data) => {
         if(rowID.length === 0) return true
         if(data.postID === null) return true
     }
+
     return (
         <div className="wrap">
             <Spin spinning={loading} size="large">

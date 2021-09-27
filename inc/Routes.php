@@ -56,8 +56,28 @@ class Routes {
                 'callback' => [ $this, 'start_import' ],
             ]
         );
-    }
 
+    }
+    public function clear_data($group_key, $key, $post_id) {
+        $field_slug = get_field_object($key)['name'];
+        $page_fields = get_field($group_key, $post_id);
+        $layout = null;
+        $data = false;
+        foreach ($page_fields as $field) {
+            if(array_key_exists($field_slug, $field)) {
+                $layout = $field['acf_fc_layout'];
+            }
+        }
+        if ( have_rows( $group_key, $post_id ) ):
+            while ( have_rows( $group_key, $post_id ) ) : the_row();
+                if( get_row_layout() === $layout) {
+                   $data  =  delete_sub_field($key);
+                   break;
+                }
+            endwhile;
+            endif;
+        return $data;
+    }
     public function get_post_types(): WP_REST_Response {
         $response = [];
         $excluded_post_types = [
@@ -273,10 +293,12 @@ class Routes {
         return $result;
     }
 
-    private function update_data( $mapped_fields, $file_data, $postID, $row_id ) {
+    private function update_data( $mapped_fields, $file_data, $postID, $row_id, $path ) {
         if(gettype($mapped_fields) === 'string') {
             $mapped_fields = json_decode($mapped_fields, true);
         }
+        $this->clear_data($path[1], $path[count($path) -1 ], $postID);
+
         foreach ( $mapped_fields as $key => $field ) {
             if ( $key === 'no_parent' ) {
                 foreach ( $file_data as $file_d ) {
@@ -287,6 +309,7 @@ class Routes {
                     }
                 }
             } else {
+
                 foreach ( $file_data as $file_d ) {
                     $data = [];
                     $has_sub_fields = false;
@@ -328,7 +351,7 @@ class Routes {
         $data      = $request->get_params();
         $file_data = $this->csv_to_array( get_attached_file( $data['fileID'] ) )['data'];
         if ( $data['postID'] !== null ) {
-            $this->update_data( $data['data'], $file_data, $data['postID'], $data['rowID'] );
+            $this->update_data( $data['data'], $file_data, $data['postID'], $data['rowID'], $data['path'] );
         }
 
         return new WP_REST_Response( [], '200' );

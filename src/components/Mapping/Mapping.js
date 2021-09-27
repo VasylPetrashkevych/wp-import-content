@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {connect} from 'react-redux';
 import './style.scss';
 import {Table, Select, Tag} from 'antd';
@@ -9,13 +9,27 @@ import {updateMapping} from '../../store/actions';
 import {disabledFields} from '../../config';
 
 const Mapping = (data) => {
+
     const setMapping = (value, row) => {
         const dataFields = {...data.mappedFields};
         let key = row.parent_key === undefined ? 'no_parent' : row.parent_key;
-        if (dataFields[key] === undefined) {
+
+        if (Object.keys(dataFields).length !== 0) {
+            const hasField = dataFields[key].filter(field => field.key === row['field-key']);
+            if(hasField.length !== 0) {
+                for (let field of dataFields[key]) {
+                    if (field.key === row['field-key']) {
+                        field.value = value;
+                    }
+                }
+            }else {
+                dataFields[key].push({key: row['field-key'], value, type: row.type, group_key: row['group_key']});
+            }
+        } else {
             dataFields[key] = [];
+            dataFields[key].push({key: row['field-key'], value, type: row.type, group_key: row['group_key']});
         }
-        dataFields[key].push({key: row['field-key'], value, type: row.type, group_key: row['group_key'] });
+
         data.updateMapping(dataFields);
     };
     const tableData = [];
@@ -37,18 +51,12 @@ const Mapping = (data) => {
         target: '',
     }
 
-    const setLink = (value, row)=> {
-        linkData[row.link] = value !== 'not selected' ? value : '';
-        if(linkData.url !== '' && linkData.title !== '') {
-            const dataFields = {...data.mappedFields};
-            let key = row.parent_key === undefined ? 'no_parent' : row.parent_key;
-            if (dataFields[key] === undefined) {
-                dataFields[key] = [];
-            }
-            dataFields[key].push({key: row['field-key'], value: linkData, type: row.type, group_key: row['group_key']});
-            data.updateMapping(dataFields);
+    const setLink = (value, row) => {
+        linkData[row.link] = value !== 'not selected' ? value : '#';
+        if (linkData.url !== '' && linkData.title !== '') {
+            setMapping(linkData, row);
         }
-    }
+    };
     return <div className="mapping">
         {
             data.length !== 0 ? <Table
@@ -69,13 +77,14 @@ const Mapping = (data) => {
                                 if (data.dataFromFile.length === 0) {
                                     return <Tag color="orange">Select a file</Tag>;
                                 }
-                                if(record.field_type === 'link' ) {
+                                if (record.field_type === 'link') {
                                     return (
                                         <div className="link-col">
                                             <div className="link-col__row">
                                                 <div className="link-col__row-title">Url</div>
-                                                    <div className="link-col__row-field">
-                                                        <Select style={{width: 180}} onChange={setLink} defaultValue="default">
+                                                <div className="link-col__row-field">
+                                                    <Select style={{width: 180}} onChange={setLink}
+                                                            defaultValue="default">
                                                         <Option value="default">not selected</Option>
                                                         {data.dataFromFile.map(field => <Option field-key={record.key}
                                                                                                 parent_key={record.parent_field}
@@ -90,7 +99,8 @@ const Mapping = (data) => {
                                             <div className="link-col__row">
                                                 <div className="link-col__row-title">Title</div>
                                                 <div className="link-col__row-field">
-                                                    <Select style={{width: 180}} onChange={setLink} defaultValue="default">
+                                                    <Select style={{width: 180}} onChange={setLink}
+                                                            defaultValue="default">
                                                         <Option value="default">not selected</Option>
                                                         {data.dataFromFile.map(field => <Option field-key={record.key}
                                                                                                 parent_key={record.parent_field}
@@ -103,7 +113,7 @@ const Mapping = (data) => {
                                                 </div>
                                             </div>
                                         </div>
-                                    )
+                                    );
                                 }
 
                                 return (
