@@ -13,16 +13,22 @@ const Mapping = (data) => {
     const setMapping = (value, row) => {
         const dataFields = {...data.mappedFields};
         let key = row.parent_key === undefined ? 'no_parent' : row.parent_key;
-
+        let field_id = null;
         if (Object.keys(dataFields).length !== 0) {
-            const hasField = dataFields[key].filter(field => field.key === row['field-key']);
-            if(hasField.length !== 0) {
+            const hasField = dataFields[key].filter((field, id) => {
+                field_id = id;
+                return field.key === row['field-key'];
+            });
+            if (value === 'not selected') {
+
+            }
+            if (hasField.length !== 0) {
                 for (let field of dataFields[key]) {
                     if (field.key === row['field-key']) {
                         field.value = value;
                     }
                 }
-            }else {
+            } else {
                 dataFields[key].push({key: row['field-key'], value, type: row.type, group_key: row['group_key']});
             }
         } else {
@@ -49,7 +55,7 @@ const Mapping = (data) => {
         url: '',
         title: '',
         target: '',
-    }
+    };
 
     const setLink = (value, row) => {
         linkData[row.link] = value !== 'not selected' ? value : '#';
@@ -86,13 +92,19 @@ const Mapping = (data) => {
                                                     <Select style={{width: 180}} onChange={setLink}
                                                             defaultValue="default">
                                                         <Option value="default">not selected</Option>
-                                                        {data.dataFromFile.map(field => <Option field-key={record.key}
-                                                                                                parent_key={record.parent_field}
-                                                                                                type={record.field_type}
-                                                                                                key={field}
-                                                                                                link="url"
-                                                                                                group_key={record.group_key}
-                                                                                                value={field}>{field}</Option>)}
+                                                        {data.dataFromFile.map((field, id) => {
+                                                            if (field !== '') {
+                                                                return (
+                                                                    <Option field-key={record.key}
+                                                                            parent_key={record.parent_field}
+                                                                            type={record.field_type}
+                                                                            key={field + id}
+                                                                            link="url"
+                                                                            group_key={record.group_key}
+                                                                            value={field}>{field}</Option>);
+                                                            }
+                                                        })
+                                                        }
                                                     </Select>
                                                 </div>
                                             </div>
@@ -102,13 +114,19 @@ const Mapping = (data) => {
                                                     <Select style={{width: 180}} onChange={setLink}
                                                             defaultValue="default">
                                                         <Option value="default">not selected</Option>
-                                                        {data.dataFromFile.map(field => <Option field-key={record.key}
-                                                                                                parent_key={record.parent_field}
-                                                                                                type={record.field_type}
-                                                                                                key={field}
-                                                                                                link="title"
-                                                                                                group_key={record.group_key}
-                                                                                                value={field}>{field}</Option>)}
+                                                        {data.dataFromFile.map((field, id) => {
+                                                            if (field !== '') {
+                                                                return (
+                                                                    <Option field-key={record.key}
+                                                                            parent_key={record.parent_field}
+                                                                            type={record.field_type}
+                                                                            key={field + id}
+                                                                            link="url"
+                                                                            group_key={record.group_key}
+                                                                            value={field}>{field}</Option>);
+                                                            }
+                                                        })
+                                                        }
                                                     </Select>
                                                 </div>
                                             </div>
@@ -119,12 +137,19 @@ const Mapping = (data) => {
                                 return (
                                     <Select style={{width: 180}} onChange={setMapping} defaultValue="default">
                                         <Option value="default">not selected</Option>
-                                        {data.dataFromFile.map(field => <Option field-key={record.key}
-                                                                                parent_key={record.parent_field}
-                                                                                type={record.field_type}
-                                                                                key={field}
-                                                                                group_key={record.group_key}
-                                                                                value={field}>{field}</Option>)}
+                                        {data.dataFromFile.map((field, id) => {
+                                            if (field !== '') {
+                                                return (
+                                                    <Option field-key={record.key}
+                                                            parent_key={record.parent_field}
+                                                            type={record.field_type}
+                                                            key={field + id}
+                                                            link="url"
+                                                            group_key={record.group_key}
+                                                            value={field}>{field}</Option>);
+                                            }
+                                        })
+                                        }
                                     </Select>);
                             }}/>
                 <Column title="Status" dataIndex="status" key="status"

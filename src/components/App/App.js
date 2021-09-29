@@ -22,6 +22,7 @@ const App = (data) => {
     const [rowID, setRowID] = useState('');
     const [pathToField, setPathToField] = useState([]);
     const [pluginUrl, setPluginUrl] = useState('');
+    const [pageTitleField, setPageTitleField] = useState('')
     const clearMapping = () => {
         if (Object.keys(data.mappedFields).length !== 0) {
             data.updateMapping({});
@@ -96,6 +97,7 @@ const App = (data) => {
                         rowID,
                         postType: data.postType,
                         path: pathToField,
+                        pageTitleField,
                     }
                 )
             }
@@ -110,15 +112,19 @@ const App = (data) => {
                 console.log(error);
             });
     };
+
     const changeRowID = (e) => {
         setRowID(e.target.value);
     };
+
     const disableButton = ()=> {
         if(Object.keys(data.mappedFields).length === 0) return true
+        if(data.postID === null) return false
         if(rowID.length === 0) return true
-        if(data.postID === null) return true
     }
-
+    const changePostTitleField = value => {
+        setPageTitleField(value)
+    }
     return (
         <div className="wrap">
             <Spin spinning={loading} size="large">
@@ -154,6 +160,20 @@ const App = (data) => {
                                     />
                                 </div>
                             </div>) : null}
+                    {
+                        (data.postType !== '' && data.postID === null) ? (
+                                <TableRow
+                                    title="Select a field for page title"
+                                    changeAction={changePostTitleField}
+                                    defaultValue="Select a field"
+                                    hintText="I you want to import content to specific post select the post form list"
+                                >{data.dataFromFile.map((field, id) => {
+                                   if(field !== '') {
+                                       return <Option key={field + id} value={field}>{field}</Option>
+                                   }
+                                })}
+                                </TableRow> ) : null
+                    }
                     {pathToField.length > 2 ?
                         <div className="grid__row">
                             <div className="grid__row-label">
